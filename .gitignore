@@ -1,0 +1,26 @@
+# VS / .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.sln.docstates
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+.nuget/
+
+# Logs
+*.log
+*.dmp
+
+# JetBrains
+.idea/
+
+# Baza de date SQLite (se generează la rulare)
+**/restaurant.db
+
+# EF Core backup
+_MigrationsBackup/
