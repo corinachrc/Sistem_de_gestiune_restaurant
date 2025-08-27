@@ -9,9 +9,10 @@ namespace RestaurantManager
     {
         public LoginWindow()
         {
-            InitializeComponent();
-            UsernameBox.Text = "ospatar"; // demo
-            PasswordBox.Password = "1234";
+            InitializeComponent();         // <- trebuie să existe după fix
+            UsernameBox.Text = string.Empty;
+            PasswordBox.Clear();
+            UsernameBox.Focus();
         }
 
         private void Login_Click(object sender, RoutedEventArgs e)
@@ -41,7 +42,8 @@ namespace RestaurantManager
             }
             catch (System.Exception ex)
             {
-                MessageBox.Show("Eroare la autentificare: " + ex.Message, "Eroare", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Eroare la autentificare: " + ex.Message, "Eroare",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

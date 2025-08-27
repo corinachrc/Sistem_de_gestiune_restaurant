@@ -10,20 +10,52 @@ namespace RestaurantManager
         {
             InitializeComponent();
 
-            // Setăm DataContext separat pe fiecare tab
+            // DataContext per tab
             MenuTab.DataContext = new MenuItemsViewModel();
             OrdersTab.DataContext = new OrdersViewModel();
+            UsersTab.DataContext = new UsersViewModel();
 
-            // Dacă e OSPĂTAR: ascundem "Meniu" și selectăm explicit "Comenzi"
+            ApplyRoleVisibility();
+
+            if (Session.CurrentUser != null)
+                Title += $" — {Session.CurrentUser.Username} ({Session.CurrentUser.Role})";
+        }
+
+        private void ApplyRoleVisibility()
+        {
             if (Session.IsWaiter)
             {
                 MenuTab.Visibility = Visibility.Collapsed;
-                OrdersTab.IsSelected = true;       // << important
+                UsersTab.Visibility = Visibility.Collapsed;
+                OrdersTab.IsSelected = true;
+            }
+            else // Admin
+            {
+                MenuTab.Visibility = Visibility.Visible;
+                UsersTab.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void Logout_Click(object sender, RoutedEventArgs e)
+        {
+            Application.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            this.Hide();
+
+            Session.CurrentUser = null;
+            var ok = new LoginWindow().ShowDialog() == true;
+
+            this.Close();
+
+            if (!ok)
+            {
+                Application.Current.Shutdown();
+                return;
             }
 
-            // Titlu cu userul curent (opțional)
-            if (Session.CurrentUser != null)
-                Title += $" — {Session.CurrentUser.Username} ({Session.CurrentUser.Role})";
+            var newMain = new MainWindow();
+            Application.Current.MainWindow = newMain;
+            Application.Current.ShutdownMode = ShutdownMode.OnLastWindowClose;
+            newMain.Show();
         }
     }
 }

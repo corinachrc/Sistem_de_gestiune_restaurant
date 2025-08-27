@@ -27,4 +27,10 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Page Update="LoginWindow.xaml">
+      <Generator></Generator>
+    </Page>
+  </ItemGroup>
+
 </Project>

@@ -5,6 +5,8 @@ using RestaurantManager.MVVM;
 using RestaurantManager.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.ComponentModel;
+using System.Windows.Data;
 
 namespace RestaurantManager.ViewModels
 {
@@ -12,6 +14,28 @@ namespace RestaurantManager.ViewModels
     {
         public ObservableCollection<Table> Tables { get; } = new();
         public ObservableCollection<MenuItem> Menu { get; } = new();
+
+        // View cu filtrare pentru Meniu
+        private ICollectionView? _menuView;
+        public ICollectionView? MenuView
+        {
+            get => _menuView;
+            private set => SetProperty(ref _menuView, value);
+        }
+
+        private string _filterText = "";
+        public string FilterText
+        {
+            get => _filterText;
+            set
+            {
+                if (SetProperty(ref _filterText, value))
+                {
+                    MenuView?.Refresh();
+                }
+            }
+        }
+
         public ObservableCollection<OrderItem> CurrentItems { get; } = new();
 
         private Table? _selectedTable;
@@ -84,16 +108,60 @@ namespace RestaurantManager.ViewModels
             PayCommand = new RelayCommand(_ => Pay(), _ => _currentOrder != null && CurrentItems.Count > 0);
             RefreshRevenueCommand = new RelayCommand(_ => UpdateRevenues());
 
+            // Reîncarcă meniul când tabul „Meniu” adaugă/dezactivează ceva
+            AppEvents.MenuChanged += OnMenuChanged;
+
             LoadLookups();
             UpdateRevenues();
         }
 
+        ~OrdersViewModel()
+        {
+            AppEvents.MenuChanged -= OnMenuChanged;
+        }
+
+        private void OnMenuChanged() => ReloadMenu();
+
         private void LoadLookups()
         {
-            Tables.Clear(); Menu.Clear();
+            Tables.Clear();
+            using (var db = new RestaurantDbContext())
+            {
+                foreach (var t in db.Tables.Where(t => t.IsActive).OrderBy(t => t.Id))
+                    Tables.Add(t);
+            }
+            ReloadMenu();
+        }
+
+        private bool MenuFilter(object obj)
+        {
+            if (obj is not MenuItem m) return false;
+            if (string.IsNullOrWhiteSpace(FilterText)) return true;
+            return m.Name?.IndexOf(FilterText, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private void EnsureMenuView()
+        {
+            if (MenuView == null)
+            {
+                MenuView = CollectionViewSource.GetDefaultView(Menu);
+                MenuView.Filter = MenuFilter;
+            }
+            else
+            {
+                MenuView.Refresh();
+            }
+        }
+
+        private void ReloadMenu()
+        {
+            Menu.Clear();
             using var db = new RestaurantDbContext();
-            foreach (var t in db.Tables.Where(t => t.IsActive).OrderBy(t => t.Id)) Tables.Add(t);
-            foreach (var m in db.MenuItems.Where(m => m.IsAvailable).OrderBy(m => m.Category).ThenBy(m => m.Name)) Menu.Add(m);
+            foreach (var m in db.MenuItems.Where(m => m.IsAvailable)
+                                          .OrderBy(m => m.Category).ThenBy(m => m.Name))
+                Menu.Add(m);
+
+            EnsureMenuView();
         }
 
         private void LoadOrCreateOpenOrder()
@@ -103,7 +171,6 @@ namespace RestaurantManager.ViewModels
             if (SelectedTable == null) return;
 
             using var db = new RestaurantDbContext();
-
             _currentOrder = db.Orders
                 .Include(o => o.Items)
                 .ThenInclude(i => i.MenuItem)
@@ -202,7 +269,7 @@ namespace RestaurantManager.ViewModels
             CurrentItems.Clear();
             _currentOrder = null;
             UpdateTotals();
-            UpdateRevenues(); // re-calculează încasările după plată
+            UpdateRevenues();
             PayCommand.RaiseCanExecuteChanged();
             AddItemCommand.RaiseCanExecuteChanged();
         }
@@ -212,7 +279,6 @@ namespace RestaurantManager.ViewModels
             Total = CurrentItems.Sum(i => i.UnitPrice * i.Quantity);
         }
 
-        // --- FIX: fără DefaultIfEmpty; folosim Sum pe tip nullable și coalesce cu 0m
         private void UpdateRevenues()
         {
             using var db = new RestaurantDbContext();
